@@ -37,16 +37,19 @@ main(int arc, char *argv[]) {
       fclose(out);
     }
 
+    //FORK
     pid_t pid = fork();
     if (pid < 0) { //PID < 0: Erreur lors de fork
       exit(1);
     } else if (pid > 0) { //PID > 0: Père
       int spid;
 
+      //Reset de STDIN STDOUT STDERR
       dup2(saved_stdin, STDIN);
       dup2(saved_stdout, STDOUT);
       dup2(saved_stdout, STDERR);
 
+      //Attente de la mort du fils
       wait(&spid);
     } else { //PID = 0: Fils
       execvp(line->seq[0][0], line->seq[0]);
