@@ -272,3 +272,13 @@ error:
 	}
 	return s;
 }
+
+int countCommands(struct cmdline *cmd) {
+	int i = 0;
+	char ***cmds = cmd->seq;
+
+	while (cmds[i])
+		i++;
+
+	return i;
+}

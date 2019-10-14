@@ -9,6 +9,9 @@
 Display an error and call exit() in case of memory exhaustion. */
 struct cmdline *readcmd(void);
 
+int countCommands(struct cmdline *);
+
+
 
 /* Structure returned by readcmd() */
 struct cmdline {
