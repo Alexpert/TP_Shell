@@ -40,6 +40,10 @@ main(int arc, char *argv[]) {
       fprintf(stderr, "FORK\n");
       pid = fork();
       if (pid != 0) {
+        if (cmd_id < nbCommands) {
+          close(pipes[cmd_id][READ]);
+          close(pipes[cmd_id][WRITE]);
+        }
         cmd_id++;
       }
     }
