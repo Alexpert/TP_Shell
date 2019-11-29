@@ -12,22 +12,25 @@
 #define READ 0
 #define WRITE 1
 
-// void
-// handlePipes(int inPipe[], int outPipe[], int cmd_id, int nbCommands) {
-//
-// }
-
-int
-main(int arc, char *argv[]) {
+void
+printPrompt() {
   char *login = getlogin();
   char machine[255];
   gethostname(machine, 255);
+  printf("%s@%s>", login, machine);
+}
+
+int
+main(int arc, char *argv[]) {
 
   while(1) { //A changer quand il y aura exit
 		struct cmdline *line;
 
-    printf("%s@%s>", login, machine);
+    printPrompt();
 		line = readcmd();
+
+    // if (!line->fg)
+    //   printf("Background cmd\n");
 
     //Pipes
     int nbCommands = countCommands(line);
@@ -96,9 +99,9 @@ main(int arc, char *argv[]) {
     //Le père attends la mort des Fils
     } else {
       int status;
-      for (int i = 0; i < nbCommands; ++i) {
+      for (int i = 0; line->fg && i < nbCommands; ++i) {
         wait(&status);
-        // fprintf(stderr, "Son died: %d / %d\n", i + 1, nbCommands);
+        //fprintf(stderr, "Son died: %d / %d\n", i + 1, nbCommands);
       }
     }
   }
