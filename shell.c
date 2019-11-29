@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include "readcmd.h"
@@ -11,6 +12,18 @@
 
 #define READ 0
 #define WRITE 1
+
+void
+builtIn(char **cmd) {
+  if (cmd && strcmp(cmd[0], "exit\n"))
+    exit(0);
+  if (cmd && strcmp(cmd[0], "cd")) {
+    char *newDir = strcat(&cmd[1], "/");
+    if (chdir(newDir) == -1) {
+      printf("Directory not found\n");
+    }
+  }
+}
 
 void
 printPrompt() {
@@ -28,6 +41,9 @@ main(int arc, char *argv[]) {
 
     printPrompt();
 		line = readcmd();
+
+    builtIn(line->seq[0]);
+
 
     // if (!line->fg)
     //   printf("Background cmd\n");
