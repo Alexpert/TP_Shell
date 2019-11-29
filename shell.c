@@ -9,51 +9,97 @@
 #define STDOUT 1
 #define STDERR 2
 
+#define READ 0
+#define WRITE 1
+
+// void
+// handlePipes(int inPipe[], int outPipe[], int cmd_id, int nbCommands) {
+//
+// }
+
 int
 main(int arc, char *argv[]) {
-  char *login = "placeholder";
-  char *machine = "placeholder";
+  char *login = getlogin();
+  char machine[255];
+  gethostname(machine, 255);
 
-  int saved_stdin = dup(STDIN);
-  int saved_stdout = dup(STDOUT);
-
-  while(1) { //A changer quand je saurai utiliser la commande exit
+  while(1) { //A changer quand il y aura exit
 		struct cmdline *line;
 
     printf("%s@%s>", login, machine);
 		line = readcmd();
 
-    //Gestion des redirections STDIN STDOUT STDERR
-    if (line->in != NULL) {
-      FILE *in = fopen(line->in, "r");
-      dup2(fileno(in), STDIN);
-      fclose(in);
-    }
-
-    if (line->out != NULL) {
-      FILE *out = fopen(line->out, "a");
-      dup2(fileno(out), STDOUT);
-      dup2(fileno(out), STDERR);
-      fclose(out);
-    }
+    //Pipes
+    int nbCommands = countCommands(line);
+    int pipes[nbCommands - 1][2];
 
     //FORK
-    pid_t pid = fork();
-    if (pid < 0) { //PID < 0: Erreur lors de fork
-      exit(1);
-    } else if (pid > 0) { //PID > 0: Père
-      int spid;
+    pid_t pid = 1;
+    int cmd_id = 0;
 
-      //Reset de STDIN STDOUT STDERR
-      dup2(saved_stdin, STDIN);
-      dup2(saved_stdout, STDOUT);
-      dup2(saved_stdout, STDERR);
+    while (pid && cmd_id < nbCommands) {
+      //fprintf(stderr, "FORK\n");
+      if (cmd_id < nbCommands - 1)
+        pipe(pipes[cmd_id]);
 
-      //Attente de la mort du fils
-      wait(&spid);
-    } else { //PID = 0: Fils
-      execvp(line->seq[0][0], line->seq[0]);
+      pid = fork();
+
+      if (pid != 0) {
+        if (cmd_id > 0) {
+          close(pipes[cmd_id - 1][READ]);
+          close(pipes[cmd_id - 1][WRITE]);
+        }
+        cmd_id++;
+      }
     }
 
+    //Le Fils gère ses Entrées Sorties
+    if (pid == 0) {
+      if (cmd_id == 0) {
+        // fprintf(stderr, "%d: first command\n", cmd_id);
+        if (line->in != NULL) {
+          // fprintf(stderr, "%d: Redirect STDIN\n", cmd_id);
+          FILE *in = fopen(line->in, "r");
+          dup2(fileno(in), STDIN);
+          fclose(in);
+        }
+      } else {
+        // fprintf(stderr, "%d: not first command\n", cmd_id);
+        close(STDIN);
+        dup2(pipes[cmd_id - 1][READ], STDIN);
+        close(pipes[cmd_id - 1][READ]);
+        close(pipes[cmd_id - 1][WRITE]);
+      }
+
+      if (cmd_id == nbCommands - 1) {
+        // fprintf(stderr, "%d: last command\n", cmd_id);
+        if (line->out != NULL) {
+          // fprintf(stderr, "%d: Redirect STDOUT\n", cmd_id);
+          FILE *out = fopen(line->out, "a");
+          dup2(fileno(out), STDOUT);
+          // dup2(fileno(out), STDERR);
+          fclose(out);
+        }
+      } else {
+        // fprintf(stderr, "%d: not last command\n", cmd_id);
+        close(STDOUT);
+        dup2(pipes[cmd_id][WRITE], STDOUT);
+        // dup2(pipes[cmd_id][WRITE], STDERR);
+        close(pipes[cmd_id][WRITE]);
+        close(pipes[cmd_id][READ]);
+      }
+
+
+      // fprintf(stderr, "%d: exec: %s\n", cmd_id, line->seq[cmd_id][0]);
+      execvp(line->seq[cmd_id][0], line->seq[cmd_id]);
+
+    //Le père attends la mort des Fils
+    } else {
+      int status;
+      for (int i = 0; i < nbCommands; ++i) {
+        wait(&status);
+        // fprintf(stderr, "Son died: %d / %d\n", i + 1, nbCommands);
+      }
+    }
   }
 }

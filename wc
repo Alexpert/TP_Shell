@@ -1,0 +1,13 @@
+ls.txt
+Makefile
+readcmd.c
+readcmd.h
+readcmd.o
+README.md
+shell
+shell.c
+shell.o
+tst
+tst.c
+tst.o
+wc
