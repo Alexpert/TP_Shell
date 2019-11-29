@@ -19,7 +19,7 @@ main(int arc, char *argv[]) {
   char machine[255];
   gethostname(machine, 255);
 
-  while(1) { //A changer quand je saurai utiliser la commande exit
+  while(1) { //A changer quand il y aura exit
 		struct cmdline *line;
 
     printf("%s@%s>", login, machine);
@@ -29,20 +29,21 @@ main(int arc, char *argv[]) {
     int nbCommands = countCommands(line);
     int pipes[nbCommands - 1][2];
 
-    for (int i = 0; i < nbCommands; ++i)
-      pipe(pipes[i]);
-
     //FORK
     pid_t pid = 1;
     int cmd_id = 0;
 
     while (pid && cmd_id < nbCommands) {
-      fprintf(stderr, "FORK\n");
+      //fprintf(stderr, "FORK\n");
+      if (cmd_id < nbCommands - 1)
+        pipe(pipes[cmd_id]);
+
       pid = fork();
+
       if (pid != 0) {
-        if (cmd_id < nbCommands) {
-          close(pipes[cmd_id][READ]);
-          close(pipes[cmd_id][WRITE]);
+        if (cmd_id > 0) {
+          close(pipes[cmd_id - 1][READ]);
+          close(pipes[cmd_id - 1][WRITE]);
         }
         cmd_id++;
       }
