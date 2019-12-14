@@ -15,10 +15,7 @@
 
 int
 builtIn(char **cmd) {
-  printf("%s\n", cmd[0]);
-
   if (cmd && !strcmp(cmd[0], "exit")) {
-    printf("exiting\n");
     exit(0);
   }
   if (cmd && !strcmp(cmd[0], "cd")) {
@@ -51,6 +48,10 @@ main(int arc, char *argv[]) {
 		line = readcmd();
 
     int isBuiltIn = builtIn(line->seq[0]);
+
+
+    // if (!line->fg)
+    //   printf("Background cmd\n");
 
     //Pipes
     int nbCommands = countCommands(line);
