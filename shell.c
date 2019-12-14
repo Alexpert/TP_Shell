@@ -29,9 +29,6 @@ main(int arc, char *argv[]) {
     printPrompt();
 		line = readcmd();
 
-    // if (!line->fg)
-    //   printf("Background cmd\n");
-
     //Pipes
     int nbCommands = countCommands(line);
     int pipes[nbCommands - 1][2];
