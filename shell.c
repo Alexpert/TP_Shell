@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <pwd.h>
 #include "readcmd.h"
 
 #define STDIN 0
@@ -19,13 +20,37 @@ builtIn(char **cmd) {
     exit(0);
   }
   if (cmd && !strcmp(cmd[0], "cd")) {
-    char *newDir = strcat(cmd[1], "/");
+    char *newDir;
+    if (cmd[1])
+      newDir = strcmp(cmd[1], "~") ? cmd[1] : getpwuid(getuid())->pw_dir;
+    else
+      newDir = getpwuid(getuid())->pw_dir;
+
     if (chdir(newDir) == -1) {
-      printf("Directory not found\n");
+      printf("Directory not found: %s\n", newDir);
     }
     return 1;
   }
   return 0;
+}
+
+char *
+simplWorkingDir(char *workingDir) {
+  char *homeDir = getpwuid(getuid())->pw_dir;
+  char *simplWD = malloc(sizeof(char) * strlen(workingDir));
+
+  int i = 0;
+  while (homeDir[i] && homeDir[i] == workingDir[i])
+    ++i;
+
+  if (homeDir[i]) {
+    strcpy(simplWD, workingDir);
+  } else {
+    simplWD[0] = '~';
+    strcpy(&simplWD[1], &workingDir[i]);
+  }
+
+  return simplWD;
 }
 
 void
@@ -35,7 +60,7 @@ printPrompt() {
   char workingDir[255];
   gethostname(machine, 255);
   getcwd(workingDir, 255);
-  printf("%s@%s:%s\n--> ", login, machine, workingDir);
+  printf("%s@%s:%s\n--> ", login, machine, simplWorkingDir(workingDir));
 }
 
 int
@@ -47,14 +72,11 @@ main(int arc, char *argv[]) {
     printPrompt();
 		line = readcmd();
 
+    int nbCommands = countCommands(line);
+
     int isBuiltIn = builtIn(line->seq[0]);
 
-
-    // if (!line->fg)
-    //   printf("Background cmd\n");
-
     //Pipes
-    int nbCommands = countCommands(line);
     int pipes[nbCommands - 1][2];
 
     //FORK
@@ -63,7 +85,6 @@ main(int arc, char *argv[]) {
 
     if (!isBuiltIn) {
       while (pid && cmd_id < nbCommands) {
-        //fprintf(stderr, "FORK\n");
         if (cmd_id < nbCommands - 1)
           pipe(pipes[cmd_id]);
 
@@ -80,33 +101,27 @@ main(int arc, char *argv[]) {
 
       //Le Fils gère ses Entrées Sorties
       if (pid == 0) {
-        if (cmd_id == 0) {
-          // fprintf(stderr, "%d: first command\n", cmd_id);
+        if (cmd_id == 0) { //Si c'est la première commande
           if (line->in != NULL) {
-            // fprintf(stderr, "%d: Redirect STDIN\n", cmd_id);
             FILE *in = fopen(line->in, "r");
             dup2(fileno(in), STDIN);
             fclose(in);
           }
-        } else {
-          // fprintf(stderr, "%d: not first command\n", cmd_id);
+        } else { //Si ce n'est pas la première commande
           close(STDIN);
           dup2(pipes[cmd_id - 1][READ], STDIN);
           close(pipes[cmd_id - 1][READ]);
           close(pipes[cmd_id - 1][WRITE]);
         }
 
-        if (cmd_id == nbCommands - 1) {
-          // fprintf(stderr, "%d: last command\n", cmd_id);
+        if (cmd_id == nbCommands - 1) { //Si c'est la dernière commande
           if (line->out != NULL) {
-            // fprintf(stderr, "%d: Redirect STDOUT\n", cmd_id);
             FILE *out = fopen(line->out, "a");
             dup2(fileno(out), STDOUT);
             // dup2(fileno(out), STDERR);
             fclose(out);
           }
-        } else {
-          // fprintf(stderr, "%d: not last command\n", cmd_id);
+        } else { //Si ce n'est pasla dernière commande
           close(STDOUT);
           dup2(pipes[cmd_id][WRITE], STDOUT);
           // dup2(pipes[cmd_id][WRITE], STDERR);
@@ -115,7 +130,6 @@ main(int arc, char *argv[]) {
         }
 
 
-        // fprintf(stderr, "%d: exec: %s\n", cmd_id, line->seq[cmd_id][0]);
         execvp(line->seq[cmd_id][0], line->seq[cmd_id]);
 
       //Le père attends la mort des Fils
@@ -123,7 +137,6 @@ main(int arc, char *argv[]) {
         int status;
         for (int i = 0; line->fg && i < nbCommands; ++i) {
           wait(&status);
-          //fprintf(stderr, "Son died: %d / %d\n", i + 1, nbCommands);
         }
       }
     }
