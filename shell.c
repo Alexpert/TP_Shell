@@ -5,6 +5,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <pwd.h>
+#include <string.h>
+#include <errno.h>
 #include "readcmd.h"
 
 #define STDIN 0
@@ -131,7 +133,7 @@ main(int arc, char *argv[]) {
 
 
         execvp(line->seq[cmd_id][0], line->seq[cmd_id]);
-
+        fprintf(stderr, "%s\n", strerror(errno));
       //Le père attends la mort des Fils
       } else {
         int status;
