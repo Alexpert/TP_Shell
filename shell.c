@@ -131,10 +131,12 @@ main(int arc, char *argv[]) {
           close(pipes[cmd_id][READ]);
         }
 
-
+	if (!strcmp(line->seq[cmd_id][0], "ls"))
+		line->seq[cmd_id][1] = "--color=tty";
         execvp(line->seq[cmd_id][0], line->seq[cmd_id]);
         fprintf(stderr, "%s\n", strerror(errno));
-      //Le père attends la mort des Fils
+      	break;
+	//Le père attends la mort des Fils
       } else {
         int status;
         for (int i = 0; line->fg && i < nbCommands; ++i) {
